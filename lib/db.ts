@@ -7,6 +7,7 @@ import type {
   IPPAccount,
   Asset,
   MonthlySnapshot,
+  BudgetSummary,
 } from './types';
 
 // Database schema definition
@@ -149,6 +150,108 @@ export const db = {
   },
 
   // Add more CRUD methods as needed for other stores
+  // Delete budget category
+  async deleteBudgetCategory(id: string): Promise<void> {
+    const db = await initDB();
+    await db.delete('budgetCategories', id);
+  },
+
+  // Get categories by type
+  async getCategoriesByType(type: 'needs' | 'wants' | 'savings' | 'growth'): Promise<BudgetCategory[]> {
+    const db = await initDB();
+    return await db.getAllFromIndex('budgetCategories', 'by-type', type);
+  },
+
+  // Savings Goals
+  async getAllSavingsGoals(): Promise<SavingsGoal[]> {
+    const db = await initDB();
+    return await db.getAll('savingsGoals');
+  },
+
+  async saveSavingsGoal(goal: SavingsGoal): Promise<void> {
+    const db = await initDB();
+    await db.put('savingsGoals', goal);
+  },
+
+  async deleteSavingsGoal(id: string): Promise<void> {
+    const db = await initDB();
+    await db.delete('savingsGoals', id);
+  },
+
+  // IPP Account
+  async getIPPAccount(): Promise<IPPAccount | undefined> {
+    const db = await initDB();
+    const accounts = await db.getAll('ippAccount');
+    return accounts[0]; // Single IPP account for MVP
+  },
+
+  async saveIPPAccount(account: IPPAccount): Promise<void> {
+    const db = await initDB();
+    await db.put('ippAccount', account);
+  },
+
+  // Assets
+  async getAllAssets(): Promise<Asset[]> {
+    const db = await initDB();
+    return await db.getAll('assets');
+  },
+
+  async getAssetsByType(type: 'asset' | 'liability'): Promise<Asset[]> {
+    const db = await initDB();
+    return await db.getAllFromIndex('assets', 'by-type', type);
+  },
+
+  async saveAsset(asset: Asset): Promise<void> {
+    const db = await initDB();
+    await db.put('assets', asset);
+  },
+
+  async deleteAsset(id: string): Promise<void> {
+    const db = await initDB();
+    await db.delete('assets', id);
+  },
+
+  // Monthly Snapshots
+  async getMonthlySnapshot(month: string): Promise<MonthlySnapshot | undefined> {
+    const db = await initDB();
+    const snapshots = await db.getAllFromIndex('monthlySnapshots', 'by-month', month);
+    return snapshots[0];
+  },
+
+  async saveMonthlySnapshot(snapshot: MonthlySnapshot): Promise<void> {
+    const db = await initDB();
+    await db.put('monthlySnapshots', snapshot);
+  },
+
+  async getAllMonthlySnapshots(): Promise<MonthlySnapshot[]> {
+    const db = await initDB();
+    return await db.getAll('monthlySnapshots');
+  },
+
+  // Delete transaction
+  async deleteTransaction(id: string): Promise<void> {
+    const db = await initDB();
+    await db.delete('transactions', id);
+  },
+
+  // Get all transactions
+  async getAllTransactions(): Promise<Transaction[]> {
+    const db = await initDB();
+    return await db.getAll('transactions');
+  },
+
+  // Clear all data (for testing/reset)
+  async clearAllData(): Promise<void> {
+    const db = await initDB();
+    const stores = ['userProfile', 'budgetCategories', 'transactions', 'savingsGoals', 'ippAccount', 'assets', 'monthlySnapshots'];
+    
+    for (const store of stores) {
+      const allKeys = await db.getAllKeys(store as any);
+      for (const key of allKeys) {
+        await db.delete(store as any, key);
+      }
+    }
+  },
 };
 
 // Utility to generate unique IDs
