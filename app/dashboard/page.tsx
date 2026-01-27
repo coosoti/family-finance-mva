@@ -267,7 +267,7 @@ export default function DashboardPage() {
           <NavButton
             icon={<Wallet size={20} />}
             label="Net Worth"
-            onClick={() => alert('Coming in Feature 7!')}
+            onClick={() => router.push('/networth')}
           />
         </div>
       </div>
