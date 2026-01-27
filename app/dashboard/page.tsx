@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, DollarSign, PiggyBank, Wallet, Plus, Calendar } from 'lucide-react';
+import { TrendingUp, DollarSign, PiggyBank, Wallet, Plus, Calendar, Download} from 'lucide-react';
 import { db } from '@/lib/db';
 import { UserProfile, Transaction, BudgetCategory } from '@/lib/types';
 import {
@@ -186,6 +186,24 @@ export default function DashboardPage() {
               <DollarSign size={24} className="text-green-600" />
             </div>
             <span className="font-medium text-gray-900">View Budget</span>
+          </button>
+
+          <button
+            onClick={() => router.push('/backup')}
+            className="card flex w-full items-center justify-between transition-all hover:shadow-md"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <Download size={20} />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-gray-800">Backup Data</p>
+                <p className="text-xs text-gray-500">Export & restore</p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
 
