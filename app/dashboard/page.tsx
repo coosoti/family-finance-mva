@@ -179,7 +179,7 @@ export default function DashboardPage() {
           </button>
 
           <button
-            onClick={() => alert('Budget screen coming in Feature 5!')}
+            onClick={() => router.push('/budget')}
             className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
           >
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
@@ -257,7 +257,7 @@ export default function DashboardPage() {
           <NavButton
             icon={<PiggyBank size={20} />}
             label="Budget"
-            onClick={() => alert('Coming in Feature 5!')}
+            onClick={() => router.push('/budget')}
           />
           <NavButton
             icon={<TrendingUp size={20} />}
