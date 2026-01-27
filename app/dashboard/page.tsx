@@ -262,7 +262,7 @@ export default function DashboardPage() {
           <NavButton
             icon={<TrendingUp size={20} />}
             label="Savings"
-            onClick={() => alert('Coming in Feature 6!')}
+            onClick={() => router.push('/savings')}
           />
           <NavButton
             icon={<Wallet size={20} />}
