@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, DollarSign, PiggyBank, Wallet, Plus, Calendar, Download} from 'lucide-react';
+import { TrendingUp, DollarSign, PiggyBank, Wallet, Plus, Calendar, Download } from 'lucide-react';
 import { db } from '@/lib/db';
 import { UserProfile, Transaction, BudgetCategory } from '@/lib/types';
 import {
@@ -15,6 +15,7 @@ import {
   getCurrentMonth,
 } from '@/lib/calculations';
 import QuickExpenseModal from '@/lib/QuickExpenseModal';
+import BottomNav from '@/components/BottomNav';
 
 interface DashboardMetrics {
   netWorth: number;
@@ -114,7 +115,11 @@ export default function DashboardPage() {
       {/* Content */}
       <div className="space-y-6 p-6">
         {/* Net Worth Card */}
-        <div className="card bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        <button
+          type="button"
+          onClick={() => router.push('/networth')}
+          className="card w-full bg-gradient-to-r from-blue-600 to-blue-700 text-left text-white transition-shadow hover:shadow-md"
+        >
           <p className="mb-1 text-sm opacity-90">Current Net Worth</p>
           <p className="mb-4 text-4xl font-bold">
             KES {metrics.netWorth.toLocaleString()}
@@ -125,10 +130,14 @@ export default function DashboardPage() {
               {metrics.netWorth > 0 ? 'Building wealth' : 'Start adding assets'}
             </span>
           </div>
-        </div>
+        </button>
 
         {/* Budget Overview */}
-        <div className="card">
+        <button
+          type="button"
+          onClick={() => router.push('/budget')}
+          className="card w-full text-left transition-shadow hover:shadow-md"
+        >
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-gray-600">This Month's Budget</h3>
@@ -164,7 +173,7 @@ export default function DashboardPage() {
               {Math.abs(metrics.budgetRemaining).toLocaleString()} remaining
             </span>
           </div>
-        </div>
+        </button>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3">
@@ -215,6 +224,7 @@ export default function DashboardPage() {
             value={`${metrics.savingsProgress.toFixed(0)}%`}
             subtitle="On track"
             color="green"
+            onClick={() => router.push('/savings')}
           />
           <StatCard
             icon={<Wallet size={20} />}
@@ -222,6 +232,7 @@ export default function DashboardPage() {
             value={`KES ${profile.monthlyIncome.toLocaleString()}`}
             subtitle="Net income"
             color="blue"
+            onClick={() => router.push('/budget')}
           />
         </div>
 
@@ -264,31 +275,19 @@ export default function DashboardPage() {
             <p className="mb-4 text-sm text-gray-600">
               Start tracking your expenses by clicking "Add Expense" above
             </p>
+            <button
+              type="button"
+              onClick={() => setShowExpenseModal(true)}
+              className="mx-auto rounded-lg bg-blue-600 px-6 py-2 font-semibold text-white hover:bg-blue-700"
+            >
+              Add Expense
+            </button>
           </div>
         )}
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md border-t border-gray-200 bg-white p-2">
-        <div className="flex justify-around">
-          <NavButton icon={<DollarSign size={20} />} label="Dashboard" active />
-          <NavButton
-            icon={<PiggyBank size={20} />}
-            label="Budget"
-            onClick={() => router.push('/budget')}
-          />
-          <NavButton
-            icon={<TrendingUp size={20} />}
-            label="Savings"
-            onClick={() => router.push('/savings')}
-          />
-          <NavButton
-            icon={<Wallet size={20} />}
-            label="Net Worth"
-            onClick={() => router.push('/networth')}
-          />
-        </div>
-      </div>
+      <BottomNav />
 
       {/* Quick Expense Modal */}
       <QuickExpenseModal
@@ -306,43 +305,39 @@ function StatCard({
   value,
   subtitle,
   color,
+  onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   value: string;
   subtitle: string;
   color: 'green' | 'blue';
+  onClick?: () => void;
 }) {
   const colorClass = color === 'green' ? 'text-green-600 bg-green-100' : 'text-blue-600 bg-blue-100';
 
-  return (
-    <div className="card">
+  const clickable = !!onClick;
+
+  const content = (
+    <>
       <div className={`mb-2 inline-flex rounded-full p-2 ${colorClass}`}>{icon}</div>
       <p className="mb-1 text-xs text-gray-600">{title}</p>
       <p className="mb-1 text-xl font-bold text-gray-900">{value}</p>
       <p className="text-xs text-gray-500">{subtitle}</p>
-    </div>
+    </>
   );
-}
 
-function NavButton({
-  icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
+  if (!clickable) {
+    return <div className="card">{content}</div>;
+  }
+
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex flex-col items-center px-4 py-2 ${active ? 'text-blue-600' : 'text-gray-500'}`}
+      className="card w-full text-left transition-shadow hover:shadow-md"
     >
-      {icon}
-      <span className="mt-1 text-xs">{label}</span>
+      {content}
     </button>
   );
 }

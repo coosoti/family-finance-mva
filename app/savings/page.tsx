@@ -9,6 +9,7 @@ import { getIPPSummary } from '@/lib/calculations';
 import AddSavingsContributionModal from '@/components/AddSavingsContributionModal';
 import AddIPPContributionModal from '@/components/AddIPPContributionModal';
 import AddSavingsGoalModal from '@/components/AddSavingsGoalModal';
+import BottomNav from '@/components/BottomNav';
 
 export default function SavingsPage() {
   const router = useRouter();
@@ -35,13 +36,19 @@ export default function SavingsPage() {
       }
       setProfile(userProfile);
 
-      const [goals, ipp] = await Promise.all([
-        db.getAllSavingsGoals(),
-        db.getIPPAccount(),
-      ]);
+      const [goals, ipp] = await Promise.all([db.getAllSavingsGoals(), db.getIPPAccount()]);
 
       setSavingsGoals(goals);
       setIppAccount(ipp || null);
+
+      if (goals.length === 0) {
+        const hasShownIntro = typeof window !== 'undefined' ? localStorage.getItem('hasShownSavingsIntro') : 'true';
+        if (!hasShownIntro) {
+          localStorage.setItem('hasShownSavingsIntro', 'true');
+          setSelectedGoal(null);
+          setShowAddGoalModal(true);
+        }
+      }
     } catch (error) {
       console.error('Error loading savings data:', error);
     } finally {
@@ -230,26 +237,7 @@ export default function SavingsPage() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md border-t border-gray-200 bg-white p-2">
-        <div className="flex justify-around">
-          <NavButton
-            icon={<span className="text-lg">🏠</span>}
-            label="Dashboard"
-            onClick={() => router.push('/dashboard')}
-          />
-          <NavButton
-            icon={<span className="text-lg">💰</span>}
-            label="Budget"
-            onClick={() => router.push('/budget')}
-          />
-          <NavButton icon={<span className="text-lg">🐷</span>} label="Savings" active />
-          <NavButton
-            icon={<span className="text-lg">📊</span>}
-            label="Net Worth"
-            onClick={() => alert('Coming in Feature 7!')}
-          />
-        </div>
-      </div>
+      <BottomNav />
 
       {/* Modals */}
       <AddSavingsContributionModal
@@ -350,27 +338,5 @@ function GoalCard({
         </button>
       </div>
     </div>
-  );
-}
-
-function NavButton({
-  icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center px-4 py-2 ${active ? 'text-green-600' : 'text-gray-500'}`}
-    >
-      {icon}
-      <span className="mt-1 text-xs">{label}</span>
-    </button>
   );
 }

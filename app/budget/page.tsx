@@ -8,6 +8,7 @@ import { db } from '@/lib/db';
 import { BudgetCategory, Transaction, UserProfile } from '@/lib/types';
 import { getBudgetVsActual, getCurrentMonth, getDaysLeftInMonth } from '@/lib/calculations';
 import QuickExpenseModal from '@/lib/QuickExpenseModal';
+import BottomNav from '@/components/BottomNav';
 
 interface CategoryWithSpending extends BudgetCategory {
   spent: number;
@@ -221,30 +222,7 @@ export default function BudgetPage() {
       />
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md border-t border-gray-200 bg-white p-2">
-        <div className="flex justify-around">
-          <NavButton
-            icon={<span className="text-lg">🏠</span>}
-            label="Dashboard"
-            onClick={() => router.push('/dashboard')}
-          />
-          <NavButton
-            icon={<span className="text-lg">💰</span>}
-            label="Budget"
-            active
-          />
-          <NavButton
-            icon={<span className="text-lg">🐷</span>}
-            label="Savings"
-            onClick={() => alert('Coming in Feature 6!')}
-          />
-          <NavButton
-            icon={<span className="text-lg">📊</span>}
-            label="Net Worth"
-            onClick={() => alert('Coming in Feature 7!')}
-          />
-        </div>
-      </div>
+      <BottomNav />
     </div>
   );
 }

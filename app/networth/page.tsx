@@ -7,6 +7,7 @@ import { db } from '@/lib/db';
 import { Asset, UserProfile } from '@/lib/types';
 import { calculateNetWorth } from '@/lib/calculations';
 import AddAssetModal from '@/components/AddAssetModal';
+import BottomNav from '@/components/BottomNav';
 
 export default function NetWorthPage() {
   const router = useRouter();
@@ -250,26 +251,7 @@ export default function NetWorthPage() {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-md border-t border-gray-200 bg-white p-2">
-        <div className="flex justify-around">
-          <NavButton
-            icon={<span className="text-lg">🏠</span>}
-            label="Dashboard"
-            onClick={() => router.push('/dashboard')}
-          />
-          <NavButton
-            icon={<span className="text-lg">💰</span>}
-            label="Budget"
-            onClick={() => router.push('/budget')}
-          />
-          <NavButton
-            icon={<span className="text-lg">🐷</span>}
-            label="Savings"
-            onClick={() => router.push('/savings')}
-          />
-          <NavButton icon={<span className="text-lg">📊</span>} label="Net Worth" active />
-        </div>
-      </div>
+      <BottomNav />
 
       {/* Add/Edit Modal */}
       <AddAssetModal
@@ -311,7 +293,10 @@ function AssetCard({
             <span className="text-xs text-gray-500 capitalize">{item.category}</span>
             <span className="text-xs text-gray-400">•</span>
             <span className="text-xs text-gray-500">
-              Updated {new Date(item.lastUpdated).toLocaleDateString('en-KE', { month: 'short', day: 'numeric' })}
+              Updated {new Date(item.lastUpdated).toLocaleDateString('en-KE', {
+                month: 'short',
+                day: 'numeric',
+              })}
             </span>
           </div>
         </div>
@@ -332,27 +317,5 @@ function AssetCard({
         </button>
       </div>
     </div>
-  );
-}
-
-function NavButton({
-  icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center px-4 py-2 ${active ? 'text-blue-600' : 'text-gray-500'}`}
-    >
-      {icon}
-      <span className="mt-1 text-xs">{label}</span>
-    </button>
   );
 }
