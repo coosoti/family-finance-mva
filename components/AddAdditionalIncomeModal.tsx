@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { db, generateId } from '@/lib/db';
 import { AdditionalIncome } from '@/lib/types';
@@ -10,6 +10,8 @@ interface AddAdditionalIncomeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  income?: AdditionalIncome | null; // if provided, modal edits existing income
+  onDelete?: (income: AdditionalIncome) => void;
 }
 
 const INCOME_SOURCES = [
@@ -26,12 +28,26 @@ export default function AddAdditionalIncomeModal({
   isOpen,
   onClose,
   onSuccess,
+  income,
 }: AddAdditionalIncomeModalProps) {
   const [amount, setAmount] = useState('');
   const [source, setSource] = useState(INCOME_SOURCES[0]);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen && income) {
+      setAmount(String(income.amount));
+      setSource(income.source || INCOME_SOURCES[0]);
+      setDescription(income.description || '');
+    } else if (isOpen) {
+      // reset when opening for new entry
+      setAmount('');
+      setSource(INCOME_SOURCES[0]);
+      setDescription('');
+    }
+  }, [isOpen, income]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +63,7 @@ export default function AddAdditionalIncomeModal({
 
     try {
       const additionalIncome: AdditionalIncome = {
-        id: generateId(),
+        id: income?.id || generateId(),
         date: new Date(),
         amount: amountNum,
         source,
@@ -73,6 +89,31 @@ export default function AddAdditionalIncomeModal({
     }
   };
 
+    const handleDelete = async () => {
+      if (!income) return;
+      setIsSubmitting(true);
+      try {
+        const deletedIncome: AdditionalIncome = {
+          ...income,
+          deleted: true,
+          // update timestamp
+          date: new Date(),
+        };
+
+        await db.saveAdditionalIncome(deletedIncome);
+
+        // Notify caller so it can show undo / trash UI
+        onDelete?.(deletedIncome);
+        onSuccess();
+        onClose();
+      } catch (err) {
+        console.error('Error deleting income:', err);
+        setError('Failed to delete income');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
   if (!isOpen) return null;
 
   return (
@@ -83,14 +124,15 @@ export default function AddAdditionalIncomeModal({
           <h2 className="text-xl font-bold text-gray-900">Add Additional Income</h2>
           <button
             onClick={onClose}
-            className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close"
           >
             <X size={24} />
           </button>
         </div>
 
-        <div className="mb-4 rounded-lg bg-green-50 p-3">
-          <p className="text-sm text-green-800">
+        <div className="mb-4 rounded-lg bg-yellow-50 p-3">
+          <p className="text-sm text-yellow-800">
             💰 Track income from freelancing, side hustles, bonuses, and other sources
           </p>
         </div>
@@ -151,13 +193,24 @@ export default function AddAdditionalIncomeModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-lg border-2 border-gray-300 bg-white p-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+              className="flex-1 rounded-lg border-2 border-gray-200 bg-white p-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50"
             >
               Cancel
             </button>
-            <button type="submit" disabled={isSubmitting} className="btn-primary flex-1 bg-green-600 hover:bg-green-700">
-              {isSubmitting ? 'Saving...' : 'Add Income'}
-            </button>
+            {income ? (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isSubmitting}
+                className="flex-1 rounded-lg bg-red-600 p-3 font-semibold text-white hover:bg-red-700"
+              >
+                {isSubmitting ? 'Deleting...' : 'Delete'}
+              </button>
+            ) : (
+              <button type="submit" disabled={isSubmitting} className="flex-1 rounded-lg bg-yellow-600 p-3 font-semibold text-white hover:bg-yellow-700">
+                {isSubmitting ? 'Saving...' : 'Add Income'}
+              </button>
+            )}
           </div>
         </form>
       </div>

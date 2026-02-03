@@ -80,4 +80,5 @@ export interface UserProfile {
     source: string; // e.g., "Freelance", "Side Hustle", "Bonus"
     description?: string;
     month: string; // YYYY-MM format
+    deleted?: boolean;
   }

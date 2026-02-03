@@ -287,7 +287,10 @@ export const db = {
 
   async getAllAdditionalIncome(): Promise<AdditionalIncome[]> {
     const db = await initDB();
-    return await db.getAll('additionalIncome');
+    const all = await db.getAll('additionalIncome');
+    // Exclude soft-deleted entries by default
+    if (includeDeleted) return all;
+    return all.filter((i) => !(i as any).deleted);
   },
 };
 

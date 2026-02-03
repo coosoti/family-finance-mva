@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, DollarSign, PiggyBank, Wallet, Plus, Calendar, Download, Settings } from 'lucide-react';
 import { db } from '@/lib/db';
-import { UserProfile, Transaction, BudgetCategory } from '@/lib/types';
+import { UserProfile, Transaction, BudgetCategory, AdditionalIncome } from '@/lib/types';
 import {
   calculateNetWorth,
   getBudgetVsActual,
@@ -16,6 +16,7 @@ import {
 } from '@/lib/calculations';
 import QuickExpenseModal from '@/lib/QuickExpenseModal';
 import AddAdditionalIncomeModal from '@/components/AddAdditionalIncomeModal';
+import { Tooltip } from 'react-tooltip';
 import BottomNav from '@/components/BottomNav';
 
 interface DashboardMetrics {
@@ -34,6 +35,12 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<BudgetCategory[]>([]);
+  const [recentAdditionalIncomes, setRecentAdditionalIncomes] = useState<AdditionalIncome[]>([]);
+  const [editingIncome, setEditingIncome] = useState<AdditionalIncome | null>(null);
+  const [lastDeletedIncome, setLastDeletedIncome] = useState<AdditionalIncome | null>(null);
+  const [undoVisible, setUndoVisible] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const undoTimeoutRef = useRef<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showIncomeModal, setShowIncomeModal] = useState(false);
@@ -58,13 +65,15 @@ export default function DashboardPage() {
       // Load all metrics and include additional income in calculations
       const currentMonth = getCurrentMonth();
 
-      const [netWorthBase, budgetData, savingsData, transactions, allCategories, additionalThisMonth] = await Promise.all([
+      const [netWorthBase, budgetData, savingsData, transactions, allCategories, additionalThisMonth, allAdditional] = await Promise.all([
         calculateNetWorth(),
         getBudgetVsActual(),
         getSavingsProgress(),
         getRecentTransactions(5),
         db.getBudgetCategories(),
         db.getAdditionalIncomeByMonth(currentMonth),
+        // include deleted only when viewing trash
+        db.getAllAdditionalIncome(showTrash),
       ]);
 
       const additionalIncomeTotal = additionalThisMonth.reduce((sum, a) => sum + a.amount, 0);
@@ -81,6 +90,13 @@ export default function DashboardPage() {
 
       setRecentTransactions(transactions);
       setCategories(allCategories);
+      // show up to 5 most recent additional income entries (filter out deleted unless in trash)
+      const visibleAdditional = (allAdditional || []).filter((a) => (showTrash ? true : !a.deleted));
+      const sortedAdditional = (visibleAdditional || [])
+        .slice()
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 5);
+      setRecentAdditionalIncomes(sortedAdditional);
 
       // Check if we need to create this month's snapshot
       const existingSnapshot = await db.getMonthlySnapshot(currentMonth);
@@ -96,6 +112,35 @@ export default function DashboardPage() {
 
   const handleExpenseAdded = () => {
     loadDashboard(); // Refresh dashboard data
+  };
+
+  // Undo support: when a soft-delete occurs, show undo toast for a short time
+  const handleDeletedIncome = (inc: AdditionalIncome) => {
+    setLastDeletedIncome(inc);
+    setUndoVisible(true);
+    // clear any existing timeout
+    if (undoTimeoutRef.current) {
+      window.clearTimeout(undoTimeoutRef.current);
+    }
+    // auto-hide after 6 seconds
+    undoTimeoutRef.current = window.setTimeout(() => {
+      setUndoVisible(false);
+      setLastDeletedIncome(null);
+      undoTimeoutRef.current = null;
+    }, 6000);
+  };
+
+  const handleUndo = async () => {
+    if (!lastDeletedIncome) return;
+    // restore
+    await db.saveAdditionalIncome({ ...lastDeletedIncome, deleted: false });
+    setUndoVisible(false);
+    setLastDeletedIncome(null);
+    if (undoTimeoutRef.current) {
+      window.clearTimeout(undoTimeoutRef.current);
+      undoTimeoutRef.current = null;
+    }
+    loadDashboard();
   };
 
   if (isLoading) {
@@ -154,13 +199,16 @@ export default function DashboardPage() {
         <button
           type="button"
           onClick={() => router.push('/networth')}
-          className="card w-full bg-gradient-to-r from-blue-600 to-blue-700 text-left text-white transition-shadow hover:shadow-md"
+          className="card w-full bg-gradient-to-r from-blue-600 to-blue-700 text-left text-white shadow-lg transition-shadow hover:shadow-xl"
         >
           <p className="mb-1 text-sm opacity-90">Current Net Worth</p>
-          <p className="mb-4 text-4xl font-bold">
-            KES {metrics.netWorth.toLocaleString()}
-          </p>
-          <div className="flex items-center text-sm">
+          <p className="mb-4 text-4xl font-bold">KES {metrics.netWorth.toLocaleString()}</p>
+          {metrics.additionalIncomeThisMonth && metrics.additionalIncomeThisMonth > 0 && (
+            <p className="text-xs text-blue-100">
+              Includes KES {metrics.additionalIncomeThisMonth.toLocaleString()} additional income this month
+            </p>
+          )}
+          <div className="flex items-center text-sm mt-3">
             <TrendingUp size={16} className="mr-2" />
             <span>
               {metrics.netWorth > 0 ? 'Building wealth' : 'Start adding assets'}
@@ -212,7 +260,7 @@ export default function DashboardPage() {
         </button>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => setShowExpenseModal(true)}
             className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
@@ -225,7 +273,7 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/budget')}
-            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
+            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md rounded-lg p-3"
           >
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <DollarSign size={24} className="text-green-600" />
@@ -235,7 +283,7 @@ export default function DashboardPage() {
 
           <button
             onClick={() => router.push('/setting')}
-            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
+            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md rounded-lg p-3"
           >
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
               <Settings size={24} className="text-gray-600" />
@@ -262,7 +310,7 @@ export default function DashboardPage() {
           </button>
 
           <button
-            onClick={() => setShowIncomeModal(true)}
+            onClick={() => setShowAddIncomeModal(true)}
             className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
           >
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
@@ -273,10 +321,10 @@ export default function DashboardPage() {
 
           <button
             onClick={() => setShowAddIncomeModal(true)}
-            className="card flex items-center justify-between transition-all hover:shadow-md"
+            className="card flex items-center justify-between transition-all hover:shadow-md rounded-lg p-3"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 text-yellow-700">
                 <TrendingUp size={20} />
               </div>
               <div className="text-left">
@@ -304,10 +352,38 @@ export default function DashboardPage() {
             icon={<Wallet size={20} />}
             title="Monthly Income"
             value={`KES ${(profile.monthlyIncome + (metrics.additionalIncomeThisMonth || 0)).toLocaleString()}`}
-            subtitle="Net income"
+              subtitle={`Base: KES ${profile.monthlyIncome.toLocaleString()}${metrics.additionalIncomeThisMonth ? ` • +KES ${metrics.additionalIncomeThisMonth.toLocaleString()} additional` : ''}`}
             color="blue"
             onClick={() => router.push('/budget')}
           />
+        </div>
+
+        {/* Undo toast */}
+        {undoVisible && lastDeletedIncome && (
+          <div className="fixed bottom-20 left-1/2 z-50 mx-auto w-full max-w-md -translate-x-1/2">
+            <div className="rounded-lg bg-gray-900 p-3 text-white shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Removed: {lastDeletedIncome.source}</p>
+                  <p className="text-sm text-gray-200">KES {lastDeletedIncome.amount.toLocaleString()}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleUndo} className="rounded bg-white px-3 py-1 text-sm font-semibold text-gray-900">Undo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Additional Income This Month */}
+        <div className="mt-3">
+          <div className="card flex items-center justify-between p-4">
+            <div>
+              <p className="text-xs text-gray-600">Additional Income (This Month)</p>
+              <p className="text-xl font-bold">KES {metrics.additionalIncomeThisMonth?.toLocaleString() || '0'}</p>
+            </div>
+            <div className="text-sm text-gray-500">Included in Net Worth total</div>
+          </div>
         </div>
 
         {/* Recent Transactions */}
@@ -335,6 +411,51 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Additional Income */}
+        {recentAdditionalIncomes.length > 0 && (
+          <div className="card">
+            <h3 className="mb-4 font-semibold text-gray-900">Recent Additional Income</h3>
+            <div className="space-y-2">
+              {recentAdditionalIncomes.map((inc) => (
+                <div key={inc.id} className="flex items-center justify-between border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                  <div>
+                    <p className="font-medium text-gray-900">{inc.source}</p>
+                    <p className="text-xs text-gray-500">{inc.description || '—'}</p>
+                  </div>
+                  <div className="text-right flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900">KES {inc.amount.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">{new Date(inc.date).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingIncome(inc);
+                          setShowAddIncomeModal(true);
+                        }}
+                        className="rounded p-1 text-sm text-blue-600 hover:bg-blue-50"
+                        aria-label="Edit additional income"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingIncome(inc);
+                          setShowAddIncomeModal(true);
+                        }}
+                        className="rounded p-1 text-sm text-red-600 hover:bg-red-50"
+                        aria-label="Edit / Delete additional income"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -371,10 +492,15 @@ export default function DashboardPage() {
       />
 
       <AddAdditionalIncomeModal
-        isOpen={showIncomeModal}
-        onClose={() => setShowIncomeModal(false)}
+        isOpen={showAddIncomeModal}
+        income={editingIncome}
+        onClose={() => {
+          setShowAddIncomeModal(false);
+          setEditingIncome(null);
+        }}
         onSuccess={() => {
-          setShowIncomeModal(false);
+          setShowAddIncomeModal(false);
+          setEditingIncome(null);
           loadDashboard();
         }}
       />
@@ -402,12 +528,14 @@ function StatCard({
   const clickable = !!onClick;
 
   const content = (
-    <>
-      <div className={`mb-2 inline-flex rounded-full p-2 ${colorClass}`}>{icon}</div>
-      <p className="mb-1 text-xs text-gray-600">{title}</p>
-      <p className="mb-1 text-xl font-bold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-500">{subtitle}</p>
-    </>
+    <div className="flex items-start gap-3 p-3">
+      <div className={`inline-flex h-10 w-10 items-center justify-center rounded-md ${colorClass} shadow-sm`}>{icon}</div>
+      <div>
+        <p className="mb-1 text-xs text-gray-600">{title}</p>
+        <p className="mb-1 text-xl font-bold text-gray-900">{value}</p>
+        <p className="text-xs text-gray-500">{subtitle}</p>
+      </div>
+    </div>
   );
 
   if (!clickable) {
@@ -418,7 +546,7 @@ function StatCard({
     <button
       type="button"
       onClick={onClick}
-      className="card w-full text-left transition-shadow hover:shadow-md"
+      className="card w-full text-left transition-shadow hover:shadow-md rounded-lg"
     >
       {content}
     </button>
