@@ -73,3 +73,11 @@ export interface UserProfile {
     savings: { budgeted: number; spent: number };
     growth: { budgeted: number; spent: number };
   }
+  export interface AdditionalIncome {
+    id: string;
+    date: Date;
+    amount: number;
+    source: string; // e.g., "Freelance", "Side Hustle", "Bonus"
+    description?: string;
+    month: string; // YYYY-MM format
+  }

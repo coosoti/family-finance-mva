@@ -8,6 +8,7 @@ import type {
   Asset,
   MonthlySnapshot,
   BudgetSummary,
+  AdditionalIncome,
 } from './types';
 
 // Database schema definition
@@ -42,6 +43,11 @@ interface FamilyFinanceDB extends DBSchema {
   monthlySnapshots: {
     key: string;
     value: MonthlySnapshot;
+    indexes: { 'by-month': string };
+  };
+  additionalIncome: {
+    key: string;
+    value: AdditionalIncome;
     indexes: { 'by-month': string };
   };
 }
@@ -101,6 +107,14 @@ export async function initDB(): Promise<IDBPDatabase<FamilyFinanceDB>> {
           keyPath: 'id',
         });
         snapshotStore.createIndex('by-month', 'month');
+      }
+
+      // Additional Income store
+      if (!db.objectStoreNames.contains('additionalIncome')) {
+        const incomeStore = db.createObjectStore('additionalIncome', {
+          keyPath: 'id',
+        });
+        incomeStore.createIndex('by-month', 'month');
       }
     },
   });
@@ -251,6 +265,27 @@ export const db = {
         await db.delete(store as any, key);
       }
     }
+  },
+
+  // Additional Income
+  async getAdditionalIncomeByMonth(month: string): Promise<AdditionalIncome[]> {
+    const db = await initDB();
+    return await db.getAllFromIndex('additionalIncome', 'by-month', month);
+  },
+
+  async saveAdditionalIncome(income: AdditionalIncome): Promise<void> {
+    const db = await initDB();
+    await db.put('additionalIncome', income);
+  },
+
+  async deleteAdditionalIncome(id: string): Promise<void> {
+    const db = await initDB();
+    await db.delete('additionalIncome', id);
+  },
+
+  async getAllAdditionalIncome(): Promise<AdditionalIncome[]> {
+    const db = await initDB();
+    return await db.getAll('additionalIncome');
   },
 };
 

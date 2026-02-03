@@ -9,6 +9,10 @@ import { BudgetCategory, Transaction, UserProfile } from '@/lib/types';
 import { getBudgetVsActual, getCurrentMonth, getDaysLeftInMonth } from '@/lib/calculations';
 import QuickExpenseModal from '@/lib/QuickExpenseModal';
 import BottomNav from '@/components/BottomNav';
+import AddAdditionalIncomeModal from '@/components/AddAdditionalIncomeModal';
+import type { AdditionalIncome } from '@/lib/types';
+
+
 
 interface CategoryWithSpending extends BudgetCategory {
   spent: number;
@@ -26,64 +30,70 @@ export default function BudgetPage() {
   const [totalBudgeted, setTotalBudgeted] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  
+  const [additionalIncome, setAdditionalIncome] = useState<AdditionalIncome[]>([]);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+
   useEffect(() => {
     loadBudget();
   }, []);
 
-  const loadBudget = async () => {
-    setIsLoading(true);
-    try {
-      const userProfile = await db.getUserProfile();
-      if (!userProfile) {
-        router.push('/setup');
-        return;
-      }
-      setProfile(userProfile);
-
-      const currentMonth = getCurrentMonth();
-      const allCategories = await db.getBudgetCategories();
-      const transactions = await db.getTransactionsByMonth(currentMonth);
-
-      // Calculate spending per category
-      const categorySpending = new Map<string, number>();
-      transactions
-        .filter(t => t.type === 'expense')
-        .forEach(tx => {
-          const current = categorySpending.get(tx.categoryId) || 0;
-          categorySpending.set(tx.categoryId, current + tx.amount);
+    const loadBudget = async () => {
+      setIsLoading(true);
+      try {
+        const userProfile = await db.getUserProfile();
+        if (!userProfile) {
+          router.push('/setup');
+          return;
+        }
+        setProfile(userProfile);
+    
+        const currentMonth = getCurrentMonth();
+        const [allCategories, transactions, extraIncome] = await Promise.all([
+          db.getBudgetCategories(),
+          db.getTransactionsByMonth(currentMonth),
+          db.getAdditionalIncomeByMonth(currentMonth),
+        ]);
+    
+        // Calculate spending per category
+        const categorySpending = new Map<string, number>();
+        transactions
+          .filter(t => t.type === 'expense')
+          .forEach(tx => {
+            const current = categorySpending.get(tx.categoryId) || 0;
+            categorySpending.set(tx.categoryId, current + tx.amount);
+          });
+    
+        // Enhance categories with spending data
+        const enhancedCategories: CategoryWithSpending[] = allCategories.map(cat => {
+          const spent = categorySpending.get(cat.id) || 0;
+          const remaining = cat.budgetedAmount - spent;
+          const percentage = cat.budgetedAmount > 0 ? (spent / cat.budgetedAmount) * 100 : 0;
+    
+          return {
+            ...cat,
+            spent,
+            remaining,
+            percentage,
+          };
         });
+    
+        setCategories(enhancedCategories);
+        setAdditionalIncome(extraIncome);
+    
+        // Calculate totals
+        const budgeted = enhancedCategories.reduce((sum, c) => sum + c.budgetedAmount, 0);
+        const spent = enhancedCategories.reduce((sum, c) => sum + c.spent, 0);
+        setTotalBudgeted(budgeted);
+        setTotalSpent(spent);
+      } catch (error) {
+        console.error('Error loading budget:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      // Enhance categories with spending data
-      const enhancedCategories: CategoryWithSpending[] = allCategories.map(cat => {
-        const spent = categorySpending.get(cat.id) || 0;
-        const remaining = cat.budgetedAmount - spent;
-        const percentage = cat.budgetedAmount > 0 ? (spent / cat.budgetedAmount) * 100 : 0;
-
-        return {
-          ...cat,
-          spent,
-          remaining,
-          percentage,
-        };
-      });
-
-      setCategories(enhancedCategories);
-
-      // Calculate totals
-      const budgeted = enhancedCategories.reduce((sum, c) => sum + c.budgetedAmount, 0);
-      const spent = enhancedCategories.reduce((sum, c) => sum + c.spent, 0);
-      setTotalBudgeted(budgeted);
-      setTotalSpent(spent);
-    } catch (error) {
-      console.error('Error loading budget:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleExpenseAdded = () => {
-    loadBudget();
+    const handleExpenseAdded = () => {
+      loadBudget();
   };
 
   const filteredCategories = selectedType === 'all'
@@ -171,6 +181,37 @@ export default function BudgetPage() {
           <Plus size={20} />
           Add Expense
         </button>
+
+        {/* Additional Income Section */}
+        {additionalIncome.length > 0 && (
+          <div className="card bg-gradient-to-r from-green-50 to-green-100">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-semibold text-green-900">Additional Income This Month</h3>
+              <span className="text-lg font-bold text-green-700">
+                +KES {additionalIncome.reduce((sum, inc) => sum + inc.amount, 0).toLocaleString()}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {additionalIncome.map((inc) => (
+                <div key={inc.id} className="flex items-center justify-between text-sm">
+                  <span className="text-green-800">{inc.source}</span>
+                  <span className="font-medium text-green-900">
+                    +KES {inc.amount.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Add Income Button */}
+        <button
+          onClick={() => setShowIncomeModal(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-green-600 bg-white p-3 font-semibold text-green-600 transition-colors hover:bg-green-50"
+        >
+          <Plus size={20} />
+          Add Additional Income
+        </button>
       </div>
 
       {/* Budget Breakdown */}
@@ -220,7 +261,12 @@ export default function BudgetPage() {
         onClose={() => setSelectedCategoryId(null)}
         onUpdate={loadBudget}
       />
-
+        {/* Additional Income Modal */}
+      <AddAdditionalIncomeModal
+        isOpen={showIncomeModal}
+        onClose={() => setShowIncomeModal(false)}
+        onSuccess={loadBudget}
+      />
       {/* Bottom Navigation */}
       <BottomNav />
     </div>
