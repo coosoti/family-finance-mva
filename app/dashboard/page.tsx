@@ -15,6 +15,7 @@ import {
   getCurrentMonth,
 } from '@/lib/calculations';
 import QuickExpenseModal from '@/lib/QuickExpenseModal';
+import AddAdditionalIncomeModal from '@/components/AddAdditionalIncomeModal';
 import BottomNav from '@/components/BottomNav';
 
 interface DashboardMetrics {
@@ -24,6 +25,7 @@ interface DashboardMetrics {
   budgetRemaining: number;
   savingsProgress: number;
   daysLeft: number;
+  additionalIncomeThisMonth?: number;
 }
 
 export default function DashboardPage() {
@@ -34,6 +36,8 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<BudgetCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [showAddIncomeModal, setShowAddIncomeModal] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -51,29 +55,34 @@ export default function DashboardPage() {
 
       setProfile(userProfile);
 
-      // Load all metrics
-      const [netWorth, budgetData, savingsData, transactions, allCategories] = await Promise.all([
+      // Load all metrics and include additional income in calculations
+      const currentMonth = getCurrentMonth();
+
+      const [netWorthBase, budgetData, savingsData, transactions, allCategories, additionalThisMonth] = await Promise.all([
         calculateNetWorth(),
         getBudgetVsActual(),
         getSavingsProgress(),
         getRecentTransactions(5),
         db.getBudgetCategories(),
+        db.getAdditionalIncomeByMonth(currentMonth),
       ]);
 
+      const additionalIncomeTotal = additionalThisMonth.reduce((sum, a) => sum + a.amount, 0);
+
       setMetrics({
-        netWorth,
+        netWorth: netWorthBase + additionalIncomeTotal,
         budgetUsed: budgetData.totalSpent,
         budgetTotal: budgetData.totalBudgeted,
         budgetRemaining: budgetData.remaining,
         savingsProgress: savingsData.percentageComplete,
         daysLeft: getDaysLeftInMonth(),
+        additionalIncomeThisMonth: additionalIncomeTotal,
       });
 
       setRecentTransactions(transactions);
       setCategories(allCategories);
 
       // Check if we need to create this month's snapshot
-      const currentMonth = getCurrentMonth();
       const existingSnapshot = await db.getMonthlySnapshot(currentMonth);
       if (!existingSnapshot && budgetData.totalSpent > 0) {
         await createMonthlySnapshot(currentMonth);
@@ -225,6 +234,16 @@ export default function DashboardPage() {
           </button>
 
           <button
+            onClick={() => router.push('/setting')}
+            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
+          >
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+              <Settings size={24} className="text-gray-600" />
+            </div>
+            <span className="font-medium text-gray-900">Settings</span>
+          </button>
+
+          <button
             onClick={() => router.push('/backup')}
             className="card flex w-full items-center justify-between transition-all hover:shadow-md"
           >
@@ -235,6 +254,34 @@ export default function DashboardPage() {
               <div className="text-left">
                 <p className="font-medium text-gray-800">Backup Data</p>
                 <p className="text-xs text-gray-500">Export & restore</p>
+              </div>
+            </div>
+            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+
+          <button
+            onClick={() => setShowIncomeModal(true)}
+            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
+          >
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
+              <TrendingUp size={24} className="text-yellow-600" />
+            </div>
+            <span className="font-medium text-gray-900">Add Income</span>
+          </button>
+
+          <button
+            onClick={() => setShowAddIncomeModal(true)}
+            className="card flex items-center justify-between transition-all hover:shadow-md"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 text-yellow-600">
+                <TrendingUp size={20} />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-gray-800">Add Income</p>
+                <p className="text-xs text-gray-500">Record side income or bonuses</p>
               </div>
             </div>
             <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -256,7 +303,7 @@ export default function DashboardPage() {
           <StatCard
             icon={<Wallet size={20} />}
             title="Monthly Income"
-            value={`KES ${profile.monthlyIncome.toLocaleString()}`}
+            value={`KES ${(profile.monthlyIncome + (metrics.additionalIncomeThisMonth || 0)).toLocaleString()}`}
             subtitle="Net income"
             color="blue"
             onClick={() => router.push('/budget')}
@@ -321,6 +368,15 @@ export default function DashboardPage() {
         isOpen={showExpenseModal}
         onClose={() => setShowExpenseModal(false)}
         onSuccess={handleExpenseAdded}
+      />
+
+      <AddAdditionalIncomeModal
+        isOpen={showIncomeModal}
+        onClose={() => setShowIncomeModal(false)}
+        onSuccess={() => {
+          setShowIncomeModal(false);
+          loadDashboard();
+        }}
       />
     </div>
   );

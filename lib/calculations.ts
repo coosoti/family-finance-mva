@@ -13,7 +13,11 @@ export async function calculateNetWorth(): Promise<number> {
     .filter(a => a.type === 'liability')
     .reduce((sum, a) => sum + a.amount, 0);
   
-  return totalAssets - totalLiabilities;
+  // Include any recorded additional income as part of cash assets
+  const additionalIncome = await db.getAllAdditionalIncome();
+  const additionalTotal = additionalIncome.reduce((sum, ai) => sum + ai.amount, 0);
+
+  return totalAssets + additionalTotal - totalLiabilities;
 }
 
 // Get current month in YYYY-MM format
@@ -126,6 +130,10 @@ export async function createMonthlySnapshot(month: string) {
   const netWorth = await calculateNetWorth();
   const transactions = await db.getTransactionsByMonth(month);
 
+  // Include additional income in the snapshot income total
+  const additionalThisMonth = await db.getAdditionalIncomeByMonth(month);
+  const additionalTotal = additionalThisMonth.reduce((sum, a) => sum + a.amount, 0);
+
   const ippContributions = transactions
     .filter(t => t.type === 'ipp')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -137,7 +145,7 @@ export async function createMonthlySnapshot(month: string) {
   const snapshot = {
     id: `snapshot-${month}`,
     month,
-    income: profile.monthlyIncome,
+    income: profile.monthlyIncome + additionalTotal,
     totalExpenses: budgetVsActual.totalSpent,
     totalSavings: savingsContributions,
     ippContributions,

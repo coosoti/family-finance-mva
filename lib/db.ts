@@ -53,7 +53,9 @@ interface FamilyFinanceDB extends DBSchema {
 }
 
 const DB_NAME = 'family-finance-db';
-const DB_VERSION = 1;
+// Bump DB version when adding new object stores so the `upgrade` callback
+// runs for existing user databases and creates any missing stores.
+const DB_VERSION = 2;
 
 let dbInstance: IDBPDatabase<FamilyFinanceDB> | null = null;
 
