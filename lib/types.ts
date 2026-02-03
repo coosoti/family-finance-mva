@@ -82,3 +82,24 @@ export interface UserProfile {
     month: string; // YYYY-MM format
     deleted?: boolean;
   }
+
+  export interface Investment {
+  id: string;
+  name: string; // e.g., "Sanlam Money Market Fund"
+  type: 'money-market' | 'unit-trust' | 'government-bond' | 'stock' | 'sacco' | 'reit' | 'other';
+  units: number; // Number of units/shares
+  purchasePrice: number; // Price per unit when bought
+  currentPrice: number; // Current price per unit
+  purchaseDate: Date;
+  lastUpdated: Date;
+  notes?: string;
+}
+
+export interface DividendPayment {
+  id: string;
+  investmentId: string;
+  amount: number;
+  date: Date;
+  type: 'dividend' | 'interest';
+  notes?: string;
+}

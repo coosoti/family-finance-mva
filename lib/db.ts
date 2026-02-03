@@ -9,6 +9,8 @@ import type {
   MonthlySnapshot,
   BudgetSummary,
   AdditionalIncome,
+  Investment,
+  DividendPayment,
 } from './types';
 
 // Database schema definition
@@ -50,12 +52,23 @@ interface FamilyFinanceDB extends DBSchema {
     value: AdditionalIncome;
     indexes: { 'by-month': string };
   };
+  investments: {
+    key: string;
+    value: Investment;
+    indexes: { 'by-type': string };
+  };
+  
+  dividendPayments: {
+    key: string;
+    value: DividendPayment;
+    indexes: { 'by-investment': string };
+  };
 }
 
 const DB_NAME = 'family-finance-db';
 // Bump DB version when adding new object stores so the `upgrade` callback
 // runs for existing user databases and creates any missing stores.
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbInstance: IDBPDatabase<FamilyFinanceDB> | null = null;
 
@@ -117,6 +130,21 @@ export async function initDB(): Promise<IDBPDatabase<FamilyFinanceDB>> {
           keyPath: 'id',
         });
         incomeStore.createIndex('by-month', 'month');
+      }
+      // Investments store
+      if (!db.objectStoreNames.contains('investments')) {
+        const investmentStore = db.createObjectStore('investments', {
+          keyPath: 'id',
+        });
+        investmentStore.createIndex('by-type', 'type');
+      }
+
+      // Dividend Payments store
+      if (!db.objectStoreNames.contains('dividendPayments')) {
+        const dividendStore = db.createObjectStore('dividendPayments', {
+          keyPath: 'id',
+        });
+        dividendStore.createIndex('by-investment', 'investmentId');
       }
     },
   });
@@ -259,7 +287,7 @@ export const db = {
   // Clear all data (for testing/reset)
   async clearAllData(): Promise<void> {
     const db = await initDB();
-    const stores = ['userProfile', 'budgetCategories', 'transactions', 'savingsGoals', 'ippAccount', 'assets', 'monthlySnapshots'];
+    const stores = ['userProfile', 'budgetCategories', 'transactions', 'savingsGoals', 'ippAccount', 'assets', 'monthlySnapshots', 'investments', 'dividendPayments'];
     
     for (const store of stores) {
       const allKeys = await db.getAllKeys(store as any);
@@ -291,6 +319,43 @@ export const db = {
     // Exclude soft-deleted entries by default unless requested
     if (includeDeleted) return all;
     return all.filter((i) => !(i as any).deleted);
+  },
+
+  // Investments
+  async getAllInvestments(): Promise<Investment[]> {
+    const db = await initDB();
+    return await db.getAll('investments');
+  },
+
+  async getInvestmentsByType(type: string): Promise<Investment[]> {
+    const db = await initDB();
+    return await db.getAllFromIndex('investments', 'by-type', type);
+  },
+
+  async saveInvestment(investment: Investment): Promise<void> {
+    const db = await initDB();
+    await db.put('investments', investment);
+  },
+
+  async deleteInvestment(id: string): Promise<void> {
+    const db = await initDB();
+    await db.delete('investments', id);
+  },
+
+  // Dividend Payments
+  async getDividendsByInvestment(investmentId: string): Promise<DividendPayment[]> {
+    const db = await initDB();
+    return await db.getAllFromIndex('dividendPayments', 'by-investment', investmentId);
+  },
+
+  async saveDividendPayment(payment: DividendPayment): Promise<void> {
+    const db = await initDB();
+    await db.put('dividendPayments', payment);
+  },
+
+  async deleteDividendPayment(id: string): Promise<void> {
+    const db = await initDB();
+    await db.delete('dividendPayments', id);
   },
 };
 

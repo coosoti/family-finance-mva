@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, DollarSign, PiggyBank, Wallet, Plus, Calendar, Download, Settings } from 'lucide-react';
+import { TrendingUp, DollarSign, LineChart,PiggyBank, Wallet, Plus, Calendar, Download, Settings } from 'lucide-react';
 import { db } from '@/lib/db';
 import { UserProfile, Transaction, BudgetCategory, AdditionalIncome } from '@/lib/types';
 import {
@@ -259,7 +259,8 @@ export default function DashboardPage() {
         </button>
 
         {/* Quick Actions */}
-          <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3">
+          {/* Add Expense */}
           <button
             onClick={() => setShowExpenseModal(true)}
             className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
@@ -267,47 +268,54 @@ export default function DashboardPage() {
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
               <Plus size={24} className="text-blue-600" />
             </div>
-            <span className="font-medium text-gray-900">Add Expense</span>
+            <span className="text-sm font-medium text-gray-900">Add Expense</span>
           </button>
 
+          {/* View Budget */}
           <button
             onClick={() => router.push('/budget')}
-            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md rounded-lg p-3"
+            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
           >
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <DollarSign size={24} className="text-green-600" />
             </div>
-            <span className="font-medium text-gray-900">View Budget</span>
+            <span className="text-sm font-medium text-gray-900">View Budget</span>
           </button>
 
+          {/* Investments - NEW */}
           <button
-            onClick={() => router.push('/setting')}
-            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md rounded-lg p-3"
+            onClick={() => router.push('/investments')}
+            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
+          >
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+              <LineChart size={24} className="text-purple-600" />
+            </div>
+            <span className="text-sm font-medium text-gray-900">Investments</span>
+          </button>
+
+          {/* Settings */}
+          <button
+            onClick={() => router.push('/settings')}
+            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
           >
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
               <Settings size={24} className="text-gray-600" />
             </div>
-            <span className="font-medium text-gray-900">Settings</span>
+            <span className="text-sm font-medium text-gray-900">Settings</span>
           </button>
 
+          {/* Backup Data */}
           <button
             onClick={() => router.push('/backup')}
-            className="card flex w-full items-center justify-between transition-all hover:shadow-md"
+            className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600">
-                <Download size={20} />
-              </div>
-              <div className="text-left">
-                <p className="font-medium text-gray-800">Backup Data</p>
-                <p className="text-xs text-gray-500">Export & restore</p>
-              </div>
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100">
+              <Download size={24} className="text-orange-600" />
             </div>
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <span className="text-sm font-medium text-gray-900">Backup</span>
           </button>
 
+          {/* Add Income */}
           <button
             onClick={() => setShowAddIncomeModal(true)}
             className="card flex flex-col items-center justify-center py-6 transition-all hover:shadow-md"
@@ -315,27 +323,10 @@ export default function DashboardPage() {
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100">
               <TrendingUp size={24} className="text-yellow-600" />
             </div>
-            <span className="font-medium text-gray-900">Add Income</span>
-          </button>
-
-          <button
-            onClick={() => setShowAddIncomeModal(true)}
-            className="card flex items-center justify-between transition-all hover:shadow-md rounded-lg p-3"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 text-yellow-700">
-                <TrendingUp size={20} />
-              </div>
-              <div className="text-left">
-                <p className="font-medium text-gray-800">Add Income</p>
-                <p className="text-xs text-gray-500">Record side income or bonuses</p>
-              </div>
-            </div>
-            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
+            <span className="text-sm font-medium text-gray-900">Add Income</span>
           </button>
         </div>
+        
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4">
