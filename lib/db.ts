@@ -285,10 +285,10 @@ export const db = {
     await db.delete('additionalIncome', id);
   },
 
-  async getAllAdditionalIncome(): Promise<AdditionalIncome[]> {
+  async getAllAdditionalIncome(includeDeleted: boolean = false): Promise<AdditionalIncome[]> {
     const db = await initDB();
     const all = await db.getAll('additionalIncome');
-    // Exclude soft-deleted entries by default
+    // Exclude soft-deleted entries by default unless requested
     if (includeDeleted) return all;
     return all.filter((i) => !(i as any).deleted);
   },

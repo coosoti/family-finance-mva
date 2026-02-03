@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, DollarSign, PiggyBank, Wallet, Plus, Calendar, Download, Settings } from 'lucide-react';
 import { db } from '@/lib/db';
@@ -16,7 +16,6 @@ import {
 } from '@/lib/calculations';
 import QuickExpenseModal from '@/lib/QuickExpenseModal';
 import AddAdditionalIncomeModal from '@/components/AddAdditionalIncomeModal';
-import { Tooltip } from 'react-tooltip';
 import BottomNav from '@/components/BottomNav';
 
 interface DashboardMetrics {

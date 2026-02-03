@@ -29,6 +29,7 @@ export default function AddAdditionalIncomeModal({
   onClose,
   onSuccess,
   income,
+  onDelete,
 }: AddAdditionalIncomeModalProps) {
   const [amount, setAmount] = useState('');
   const [source, setSource] = useState(INCOME_SOURCES[0]);
