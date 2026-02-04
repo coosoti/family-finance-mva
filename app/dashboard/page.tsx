@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, DollarSign, LineChart,PiggyBank, Wallet, Plus, Calendar, Download, Settings } from 'lucide-react';
+import { BarChart3, ArrowRight, TrendingUp, DollarSign, LineChart,PiggyBank, Wallet, Plus, Calendar, Download, Settings } from 'lucide-react';
 import { db } from '@/lib/db';
 import { UserProfile, Transaction, BudgetCategory, AdditionalIncome } from '@/lib/types';
 import {
@@ -256,6 +256,23 @@ export default function DashboardPage() {
               {Math.abs(metrics.budgetRemaining).toLocaleString()} remaining
             </span>
           </div>
+        </button>
+
+        {/* Analytics Quick Access - Add this BEFORE your Quick Actions Grid */}
+        <button
+          onClick={() => router.push('/analytics')}
+          className="mb-6 flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white shadow-lg transition-transform hover:scale-[1.02]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-white bg-opacity-20 p-2">
+              <BarChart3 size={24} />
+            </div>
+            <div className="text-left">
+              <p className="font-semibold">View Analytics</p>
+              <p className="text-sm text-purple-100">Charts & spending insights</p>
+            </div>
+          </div>
+          <ArrowRight size={20} />
         </button>
 
         {/* Quick Actions */}
