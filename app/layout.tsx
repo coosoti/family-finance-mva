@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { AuthProvider } from '@/lib/auth/AuthContext';
 
 export const metadata: Metadata = {
   title: 'Family Finance - Budget, Save, Grow',
@@ -28,9 +29,11 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className="antialiased">
-        <div className="mx-auto min-h-screen max-w-md bg-gray-50">
-          {children}
-        </div>
+        <AuthProvider>
+          <div className="mx-auto min-h-screen max-w-md bg-gray-50">
+            {children}
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -5,18 +5,30 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 import { seedDemoData } from '@/lib/seed-data';
 import { db } from '@/lib/db';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { getMigrationInstance } from '@/lib/migration/migrate-to-supabase';
+import MigrationModal from '@/components/migration/MigrationModal';
 
 export default function Home() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [isInstalled, setIsInstalled] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isSeeding, setIsSeeding] = useState(false);
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [hasLocalData, setHasLocalData] = useState(false);
 
   useEffect(() => {
-    checkProfile();
-    
+    if (!authLoading) {
+      if (user) {
+        checkMigrationNeeded();
+      } else {
+        setIsCheckingProfile(false);
+      }
+    }
+
     // Check if app is installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
@@ -30,14 +42,29 @@ export default function Home() {
 
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [user, authLoading]);
 
-  const checkProfile = async () => {
+  const checkMigrationNeeded = async () => {
+    setIsCheckingProfile(true);
     try {
-      const profile = await db.getUserProfile();
-      setHasProfile(!!profile);
+      // Check if user is logged in but has no cloud data
+      // and has local IndexedDB data
+      const migration = getMigrationInstance();
+      const hasLocal = await migration.hasLocalData();
+      setHasLocalData(hasLocal);
+
+      // For now, just check if they're logged in
+      setHasProfile(!!user);
+      
+      if (user && hasLocal) {
+        // Show migration prompt
+        setShowMigrationModal(true);
+      } else if (user && !hasLocal) {
+        // User is logged in with no local data, go to dashboard
+        router.push('/dashboard');
+      }
     } catch (error) {
-      console.error('Error checking profile:', error);
+      console.error('Error checking migration:', error);
     } finally {
       setIsCheckingProfile(false);
     }
@@ -54,7 +81,11 @@ export default function Home() {
   };
 
   const handleGetStarted = () => {
-    router.push('/setup');
+    if (user) {
+      router.push('/setup');
+    } else {
+      router.push('/signup');
+    }
   };
 
   const handleGoToDashboard = () => {
@@ -74,7 +105,12 @@ export default function Home() {
     }
   };
 
-  if (isCheckingProfile) {
+  const handleMigrationComplete = () => {
+    setShowMigrationModal(false);
+    router.push('/dashboard');
+  };
+
+  if (isCheckingProfile || authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
@@ -97,25 +133,31 @@ export default function Home() {
 
         {/* Main Action Buttons */}
         <div className="space-y-3">
-          {hasProfile ? (
-            // User has profile - show dashboard button
+          {user ? (
+            // User is logged in
             <>
               <button onClick={handleGoToDashboard} className="btn-primary">
                 Go to Dashboard
               </button>
               <p className="text-sm text-gray-600">
-                Welcome back! Your account is ready.
+                Welcome back, {user.email}!
               </p>
             </>
           ) : (
-            // No profile - show get started button
+            // User is not logged in
             <>
               <button onClick={handleGetStarted} className="btn-primary">
                 Get Started
               </button>
               <p className="text-sm text-gray-600">
-                Set up your family budget in under 5 minutes
+                Create your account and start tracking finances
               </p>
+              <button
+                onClick={() => router.push('/login')}
+                className="w-full rounded-lg border-2 border-blue-600 bg-white p-3 font-semibold text-blue-600 transition-colors hover:bg-blue-50"
+              >
+                Sign In
+              </button>
             </>
           )}
         </div>
@@ -143,53 +185,51 @@ export default function Home() {
         <div className="card mt-8 space-y-3 text-left">
           <h2 className="mb-4 font-semibold text-gray-900">✅ Features Complete</h2>
 
-          <FeatureItem text="Next.js 16 with App Router" />
-          <FeatureItem text="Tailwind CSS v4" />
-          <FeatureItem text="PWA manifest configured" />
-          <FeatureItem text="IndexedDB data layer" />
-          <FeatureItem text="Budget generation logic" />
-          <FeatureItem text="Setup flow (2 screens)" />
+          <FeatureItem text="Multi-user authentication" />
+          <FeatureItem text="Cloud database (Supabase)" />
+          <FeatureItem text="Real-time sync" />
+          <FeatureItem text="Charts & Analytics" />
+          <FeatureItem text="Budget tracking" />
+          <FeatureItem text="Data migration tools" />
 
           <div className="border-t border-gray-200 pt-4">
             <p className="text-sm text-gray-600">
-              <strong>Progress:</strong> 3/8 Features Complete
+              <strong>Progress:</strong> 11/12 Features Complete
             </p>
           </div>
         </div>
 
         {/* Developer Tools */}
-        <div className="card space-y-3 text-left">
-          <h3 className="font-semibold text-gray-900">Developer Tools</h3>
-
-          {!hasProfile && (
-            <>
-              <button 
-                onClick={handleSeedData} 
-                disabled={isSeeding} 
-                className="w-full rounded-lg border-2 border-gray-300 bg-white p-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSeeding ? 'Loading...' : 'Quick Start: Load Demo Data'}
-              </button>
-              <p className="text-xs text-gray-500">
-                Skip setup and instantly see the app with demo data
-              </p>
-            </>
-          )}
-
-          {hasProfile && (
-            <p className="text-sm text-gray-600">
-              Profile exists. Go to dashboard to see your data.
+        {!user && (
+          <div className="card space-y-3 text-left">
+            <h3 className="font-semibold text-gray-900">Developer Tools</h3>
+            <button 
+              onClick={handleSeedData} 
+              disabled={isSeeding} 
+              className="w-full rounded-lg border-2 border-gray-300 bg-white p-3 font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSeeding ? 'Loading...' : 'Quick Start: Load Demo Data'}
+            </button>
+            <p className="text-xs text-gray-500">
+              Skip setup and instantly see the app with demo data
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Development Info */}
         <div className="space-y-1 text-xs text-gray-500">
-          <p>Build: Static Export</p>
-          <p>Storage: IndexedDB</p>
-          <p>Deploy: Vercel</p>
+          <p>Build: Static Export + Supabase</p>
+          <p>Storage: PostgreSQL (Cloud)</p>
+          <p>Auth: Supabase Auth</p>
         </div>
       </div>
+
+      {/* Migration Modal */}
+      <MigrationModal
+        isOpen={showMigrationModal}
+        onClose={() => setShowMigrationModal(false)}
+        onComplete={handleMigrationComplete}
+      />
     </div>
   );
 }
