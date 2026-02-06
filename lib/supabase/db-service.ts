@@ -9,7 +9,6 @@ import type {
   MonthlySnapshot,
   AdditionalIncome,
   Investment,
-  DividendPayment,
 } from '../types';
 import type { Database } from './database.types';
 
@@ -46,7 +45,6 @@ export const dbService = {
 
     if (!data) return null;
 
-    // Cast to UserProfileRow for proper typing
     const profileData = data as UserProfileRow;
 
     return {
@@ -67,10 +65,13 @@ export const dbService = {
       .from('user_profiles')
       .upsert({
         id: user.id,
+        email: user.email || '',
         name: profile.name!,
         monthly_income: profile.monthlyIncome!,
         dependents: profile.dependents!,
         updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'id'
       });
 
     if (error) throw error;
@@ -119,6 +120,8 @@ export const dbService = {
         budgeted_amount: category.budgetedAmount,
         type: category.type,
         is_default: category.isDefault,
+      }, {
+        onConflict: 'id'
       });
 
     if (error) throw error;
@@ -209,6 +212,8 @@ export const dbService = {
         type: transaction.type,
         notes: transaction.notes || null,
         month: transaction.month,
+      }, {
+        onConflict: 'id'
       });
 
     if (error) throw error;
@@ -267,6 +272,8 @@ export const dbService = {
         target_amount: goal.targetAmount,
         current_amount: goal.currentAmount,
         monthly_contribution: goal.monthlyContribution,
+      }, {
+        onConflict: 'id'
       });
 
     if (error) throw error;
@@ -293,10 +300,9 @@ export const dbService = {
       .from('ipp_accounts')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') return null; // No rows returned
       console.error('Error fetching IPP account:', error);
       return null;
     }
@@ -331,6 +337,8 @@ export const dbService = {
         tax_relief_rate: account.taxReliefRate,
         realized_value: account.realizedValue,
         last_updated: new Date().toISOString(),
+      }, {
+        onConflict: 'id'
       });
 
     if (error) throw error;
@@ -381,7 +389,9 @@ export const dbService = {
         type: asset.type,
         category: asset.category,
         last_updated: new Date().toISOString(),
-      } as any);
+      }, {
+        onConflict: 'id'
+      });
 
     if (error) throw error;
   },
@@ -408,10 +418,9 @@ export const dbService = {
       .select('*')
       .eq('user_id', user.id)
       .eq('month', month)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
       console.error('Error fetching monthly snapshot:', error);
       return null;
     }
@@ -476,6 +485,8 @@ export const dbService = {
         total_savings: snapshot.totalSavings,
         ipp_contributions: snapshot.ippContributions,
         net_worth: snapshot.netWorth,
+      }, {
+        onConflict: 'user_id,month'
       });
 
     if (error) throw error;
@@ -559,6 +570,8 @@ export const dbService = {
         description: income.description || null,
         month: income.month,
         deleted: income.deleted || false,
+      }, {
+        onConflict: 'id'
       });
 
     if (error) throw error;
@@ -624,6 +637,8 @@ export const dbService = {
         purchase_date: investment.purchaseDate.toISOString(),
         last_updated: new Date().toISOString(),
         notes: investment.notes || null,
+      }, {
+        onConflict: 'id'
       });
 
     if (error) throw error;
@@ -646,7 +661,6 @@ export const dbService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Delete in correct order due to foreign keys
     const tables = [
       'dividend_payments',
       'investments',
@@ -665,7 +679,6 @@ export const dbService = {
   },
 };
 
-// Helper to generate UUID (client-side)
 export function generateId(): string {
   return crypto.randomUUID();
 }
