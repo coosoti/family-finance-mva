@@ -11,6 +11,18 @@ import type {
   Investment,
   DividendPayment,
 } from '../types';
+import type { Database } from './database.types';
+
+// Type helpers
+type UserProfileRow = Database['public']['Tables']['user_profiles']['Row'];
+type BudgetCategoryRow = Database['public']['Tables']['budget_categories']['Row'];
+type TransactionRow = Database['public']['Tables']['transactions']['Row'];
+type SavingsGoalRow = Database['public']['Tables']['savings_goals']['Row'];
+type IPPAccountRow = Database['public']['Tables']['ipp_accounts']['Row'];
+type AssetRow = Database['public']['Tables']['assets']['Row'];
+type MonthlySnapshotRow = Database['public']['Tables']['monthly_snapshots']['Row'];
+type AdditionalIncomeRow = Database['public']['Tables']['additional_income']['Row'];
+type InvestmentRow = Database['public']['Tables']['investments']['Row'];
 
 export const dbService = {
   // =============================================
@@ -32,14 +44,19 @@ export const dbService = {
       return null;
     }
 
-    return data ? {
-      id: data.id,
-      name: data.name,
-      monthlyIncome: Number(data.monthly_income),
-      dependents: data.dependents,
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-    } : null;
+    if (!data) return null;
+
+    // Cast to UserProfileRow for proper typing
+    const profileData = data as UserProfileRow;
+
+    return {
+      id: profileData.id,
+      name: profileData.name,
+      monthlyIncome: Number(profileData.monthly_income),
+      dependents: profileData.dependents,
+      createdAt: new Date(profileData.created_at),
+      updatedAt: new Date(profileData.updated_at),
+    };
   },
 
   async saveUserProfile(profile: Partial<UserProfile>): Promise<void> {
@@ -78,7 +95,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(cat => ({
+    if (!data) return [];
+
+    return data.map((cat: BudgetCategoryRow) => ({
       id: cat.id,
       name: cat.name,
       budgetedAmount: Number(cat.budgeted_amount),
@@ -134,7 +153,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(tx => ({
+    if (!data) return [];
+
+    return data.map((tx: TransactionRow) => ({
       id: tx.id,
       date: new Date(tx.date),
       categoryId: tx.category_id || '',
@@ -160,7 +181,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(tx => ({
+    if (!data) return [];
+
+    return data.map((tx: TransactionRow) => ({
       id: tx.id,
       date: new Date(tx.date),
       categoryId: tx.category_id || '',
@@ -219,7 +242,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(goal => ({
+    if (!data) return [];
+
+    return data.map((goal: SavingsGoalRow) => ({
       id: goal.id,
       name: goal.name,
       targetAmount: Number(goal.target_amount),
@@ -276,14 +301,18 @@ export const dbService = {
       return null;
     }
 
+    if (!data) return null;
+
+    const ippData = data as IPPAccountRow;
+
     return {
-      id: data.id,
-      currentBalance: Number(data.current_balance),
-      monthlyContribution: Number(data.monthly_contribution),
-      totalContributions: Number(data.total_contributions),
-      taxReliefRate: Number(data.tax_relief_rate),
-      realizedValue: Number(data.realized_value),
-      lastUpdated: new Date(data.last_updated),
+      id: ippData.id,
+      currentBalance: Number(ippData.current_balance),
+      monthlyContribution: Number(ippData.monthly_contribution),
+      totalContributions: Number(ippData.total_contributions),
+      taxReliefRate: Number(ippData.tax_relief_rate),
+      realizedValue: Number(ippData.realized_value),
+      lastUpdated: new Date(ippData.last_updated),
     };
   },
 
@@ -326,7 +355,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(asset => ({
+    if (!data) return [];
+
+    return data.map((asset: AssetRow) => ({
       id: asset.id,
       name: asset.name,
       amount: Number(asset.amount),
@@ -385,15 +416,19 @@ export const dbService = {
       return null;
     }
 
+    if (!data) return null;
+
+    const snapData = data as MonthlySnapshotRow;
+
     return {
-      id: data.id,
-      month: data.month,
-      income: Number(data.income),
-      totalExpenses: Number(data.total_expenses),
-      totalSavings: Number(data.total_savings),
-      ippContributions: Number(data.ipp_contributions),
-      netWorth: Number(data.net_worth),
-      createdAt: new Date(data.created_at),
+      id: snapData.id,
+      month: snapData.month,
+      income: Number(snapData.income),
+      totalExpenses: Number(snapData.total_expenses),
+      totalSavings: Number(snapData.total_savings),
+      ippContributions: Number(snapData.ipp_contributions),
+      netWorth: Number(snapData.net_worth),
+      createdAt: new Date(snapData.created_at),
     };
   },
 
@@ -412,7 +447,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(snap => ({
+    if (!data) return [];
+
+    return data.map((snap: MonthlySnapshotRow) => ({
       id: snap.id,
       month: snap.month,
       income: Number(snap.income),
@@ -465,7 +502,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(inc => ({
+    if (!data) return [];
+
+    return data.map((inc: AdditionalIncomeRow) => ({
       id: inc.id,
       date: new Date(inc.date),
       amount: Number(inc.amount),
@@ -492,7 +531,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(inc => ({
+    if (!data) return [];
+
+    return data.map((inc: AdditionalIncomeRow) => ({
       id: inc.id,
       date: new Date(inc.date),
       amount: Number(inc.amount),
@@ -551,7 +592,9 @@ export const dbService = {
       return [];
     }
 
-    return data.map(inv => ({
+    if (!data) return [];
+
+    return data.map((inv: InvestmentRow) => ({
       id: inv.id,
       name: inv.name,
       type: inv.type as Investment['type'],
