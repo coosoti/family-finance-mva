@@ -381,7 +381,7 @@ export const dbService = {
         type: asset.type,
         category: asset.category,
         last_updated: new Date().toISOString(),
-      });
+      } as any);
 
     if (error) throw error;
   },
